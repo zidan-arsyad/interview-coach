@@ -1,0 +1,33 @@
+{
+  "name": "interview-coach",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Interview practice: Chinese pronunciation drills, timed answers with AI feedback, a voice mock interview, and a live cue overlay",
+  "type": "module",
+  "imports": {
+    "#profile/*": "./profile/*"
+  },
+  "scripts": {
+    "postinstall": "node scripts/init-profile.ts",
+    "start": "node server/index.ts",
+    "build": "node server/index.ts --build-only",
+    "check": "tsc --noEmit -p .",
+    "test:content": "node scripts/check-content.ts profile && node scripts/check-content.ts profile.example"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "microsoft-cognitiveservices-speech-sdk": "1.52.0",
+    "pinyin-pro": "3.29.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

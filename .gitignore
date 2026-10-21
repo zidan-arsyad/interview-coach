@@ -1,0 +1,9 @@
+# Personal data: never shared
+profile/
+.env
+sessions/
+.cache/
+
+# Generated
+node_modules/
+public/build/
