@@ -747,6 +747,22 @@ ruby.st-missed rt {
 .my-notes p {
   margin: 4px 0;
 }
+.saved-answer {
+  border-top: 1px dashed var(--border);
+  margin-top: 8px;
+  padding-top: 6px;
+  font-size: 14px;
+}
+.saved-answer p {
+  margin: 4px 0;
+}
+.saved-answer summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.saved-answer details p {
+  white-space: pre-wrap;
+}
 .live {
   font-size: 16px;
   padding: 10px 14px;
@@ -1194,6 +1210,24 @@ html.overlay-doc body > div {
 }
 .ov-full p {
   margin: 0 0 6px;
+  font-size: 0.95em;
+}
+.ov-label {
+  margin: 8px 0 3px;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9da7b3;
+}
+.ov-label:first-child {
+  margin-top: 0;
+}
+.ov-practice {
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-left: 3px solid #7ee787;
+  background: #161f1a;
   font-size: 0.95em;
 }
 .ov-matches {

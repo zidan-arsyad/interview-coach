@@ -5,13 +5,14 @@ import { Mic } from "../lib/recorder.ts";
 import { Take, pickEngine, type SpeechResult } from "../lib/speech.ts";
 import { VOICES, playUrl, speak, stopSpeaking } from "../lib/audio.ts";
 import { delivery, formatSeconds, lengthLabel, paceLabel, spelledOutMessage, type Delivery } from "../lib/metrics.ts";
-import { api } from "../lib/api.ts";
+import { api, type SavedAnswer } from "../lib/api.ts";
+import { timeYou } from "../lib/time.ts";
 import { feedbackPrompt, feedbackSchema, feedbackSystem, type AnswerFeedback } from "../lib/coach.ts";
 import { load, save } from "../lib/store.ts";
 import { Chip, Elapsed, Kbd, LevelMeter, Notice, RecordButton, Score, useHotkeys, type RecState } from "../components.tsx";
 
 type Item = Card & { isCase?: boolean };
-type Attempt = { seconds: number; url: string; result: SpeechResult | null; d?: Delivery; feedback?: AnswerFeedback; feedbackError?: string; at: number };
+type Attempt = { seconds: number; url: string; result: SpeechResult | null; d?: Delivery; feedback?: AnswerFeedback; feedbackError?: string; saveError?: string; at: number };
 
 const GROUPS = ["Intro", "Core", "Pre-hire", "Common", "Tough", "Case", "Reference"];
 
@@ -34,7 +35,9 @@ function buildItems(): Item[] {
 }
 
 export function EnglishPractice() {
-  const { status, details, detail } = useApp();
+  const { status, details, detail, answers, saveAnswer } = useApp();
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   const engine = pickEngine(status);
   const items = useMemo(buildItems, []);
   const [id, setId] = useState(() => load("en:item", "intro-en"));
@@ -104,8 +107,20 @@ export function EnglishPractice() {
         temperature: 0.4,
       });
       update(itemId, attempt.at, { feedback: fb });
+      // The overlay shows your saved version: a take replaces it when rated the same or higher, or when you choose it.
+      if (fb.rating >= (answersRef.current[itemId]?.rating ?? 0)) await keep(itemId, attempt, fb);
     } catch (e) {
       update(itemId, attempt.at, { feedbackError: (e as Error).message });
+    }
+  }
+
+  async function keep(itemId: string, attempt: Attempt, fb: AnswerFeedback) {
+    const it = items.find((i) => i.id === itemId)!;
+    try {
+      await saveAnswer(itemId, { question: it.question ?? it.title, said: attempt.result?.text ?? "", tighter: fb.tighter, cues: fb.cues ?? [], rating: fb.rating, at: attempt.at });
+      update(itemId, attempt.at, { saveError: undefined });
+    } catch (e) {
+      update(itemId, attempt.at, { saveError: (e as Error).message });
     }
   }
 
@@ -122,6 +137,7 @@ export function EnglishPractice() {
   });
 
   const myNotes = (item.details ?? []).map((k) => ({ id: k, text: detail(k), title: details.find((d) => d.id === k)?.title ?? k }));
+  const saved = answers[item.id];
 
   return (
     <div className="page">
@@ -196,6 +212,7 @@ export function EnglishPractice() {
                   )}
                 </div>
               )}
+              {saved && <SavedView saved={saved} />}
             </div>
           )}
 
@@ -210,7 +227,7 @@ export function EnglishPractice() {
           {rec === "recording" && partial && <p className="live">{partial}</p>}
           {error && <Notice tone="bad">{error}</Notice>}
 
-          {latest && <AttemptView attempt={latest} target={item.target} isCase={item.isCase} />}
+          {latest && <AttemptView attempt={latest} target={item.target} isCase={item.isCase} saved={saved} onKeep={() => latest.feedback && void keep(item.id, latest, latest.feedback)} />}
           {attempts.length > 1 && (
             <div className="history">
               <h3>Earlier tries</h3>
@@ -232,7 +249,28 @@ export function EnglishPractice() {
   );
 }
 
-function AttemptView({ attempt, target, isCase }: { attempt: Attempt; target?: [number, number]; isCase?: boolean }) {
+/** What the overlay shows for this question: your saved keywords and tighter version. */
+function SavedView({ saved }: { saved: SavedAnswer }) {
+  return (
+    <div className="saved-answer">
+      <p>
+        <b>On your overlay</b> <span className="muted">({saved.rating}/5, saved {timeYou(new Date(saved.at))})</span>
+        {saved.cues.length > 0 && <>: {saved.cues.join(" · ")}</>}
+      </p>
+      {saved.tighter && (
+        <details>
+          <summary>Your tighter version</summary>
+          <p>{saved.tighter}</p>
+          <button className="btn btn-sm" onClick={() => void speak(saved.tighter.replace(/\[[^\]]*\]/g, ""), VOICES.enMale)}>
+            ▶ Listen
+          </button>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function AttemptView({ attempt, target, isCase, saved, onKeep }: { attempt: Attempt; target?: [number, number]; isCase?: boolean; saved?: SavedAnswer; onKeep: () => void }) {
   const { result, d, feedback } = attempt;
   const len = lengthLabel(attempt.seconds, target);
   const pace = paceLabel(d?.wpm);
@@ -278,6 +316,23 @@ function AttemptView({ attempt, target, isCase }: { attempt: Attempt; target?: [
       {result?.text && !feedback && !attempt.feedbackError && <p className="muted small">Getting feedback…</p>}
       {attempt.feedbackError && <Notice tone="bad">Feedback failed: {attempt.feedbackError}</Notice>}
       {feedback && <FeedbackView fb={feedback} isCase={isCase} />}
+      {attempt.saveError ? (
+        <Notice tone="bad">
+          Not saved for the overlay: {attempt.saveError}. If the app was just updated, restart it (close the black window and start it again).
+        </Notice>
+      ) : (
+        feedback &&
+        (saved?.at === attempt.at ? (
+          <p className="small muted">✓ Saved for the overlay: the keywords show under this card, the tighter version under Full text.</p>
+        ) : (
+          <p className="small muted">
+            {saved ? `The overlay keeps your ${saved.rating}/5 version from ${timeYou(new Date(saved.at))}.` : "Not saved for the overlay yet."}{" "}
+            <button className="link" onClick={onKeep}>
+              Use this one instead
+            </button>
+          </p>
+        ))
+      )}
     </div>
   );
 }
@@ -329,6 +384,11 @@ export function FeedbackView({ fb, isCase }: { fb: AnswerFeedback; isCase?: bool
       {isCase && (
         <p className="small">
           <b>Case steps covered:</b> {fb.caseStepsHit.length ? fb.caseStepsHit.join(" → ") : "none"}
+        </p>
+      )}
+      {fb.cues?.length > 0 && (
+        <p className="small">
+          <b>Keywords:</b> {fb.cues.join(" · ")}
         </p>
       )}
       {fb.tighter && (

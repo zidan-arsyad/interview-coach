@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { cards, card as cardById, likelyCards, messages, segments, type Card } from "../content/interview.ts";
 import { zhSet } from "../content/zh.ts";
 import { readablePinyin } from "../lib/pinyin.ts";
+import type { SavedAnswer } from "../lib/api.ts";
 import { useApp } from "../state.tsx";
 import { countdown, getSlot, slotStart, timeThem, timeYou, zones } from "../lib/time.ts";
 import { load, save } from "../lib/store.ts";
@@ -57,8 +58,15 @@ export function search(query: string): Card[] {
   return scored.sort((a, b) => b.score - a.score).slice(0, 6).map((s) => s.c);
 }
 
+/** Your saved practice for a card. The case card shows your 6 C's answer, or else your latest case. */
+function savedFor(answers: Record<string, SavedAnswer>, id: string): SavedAnswer | undefined {
+  if (id !== "case") return answers[id];
+  const cases = Object.entries(answers).filter(([k]) => k.startsWith("case-"));
+  return answers["case-universal"] ?? cases.map(([, a]) => a).sort((a, b) => b.at - a.at)[0];
+}
+
 export function Overlay({ win, embedded = false }: { win: Window; embedded?: boolean }) {
-  const { detail } = useApp();
+  const { detail, answers } = useApp();
   const [now, setNow] = useState(() => Date.now());
   useInterval(() => setNow(Date.now()), 500, win);
   const [base, setBase] = useState(readBase);
@@ -87,6 +95,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
 
   const matches = useMemo(() => search(query), [query]);
   const shownId = manual && manual.seg === segKey ? manual.id : autoCard;
+  const saved = savedFor(answers, shownId);
 
   const pick = (id: string) => {
     setManual({ id, seg: segKey });
@@ -192,7 +201,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
         ) : shownId === "home" ? (
           <HomeView pick={pick} />
         ) : (
-          <CardView card={cardById(shownId)} detail={detail} full={full} />
+          <CardView card={cardById(shownId)} detail={detail} full={full} saved={saved} />
         )}
       </div>
 
@@ -206,7 +215,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
           <b>0</b> Auto
         </button>
         <span className="ov-spacer" />
-        {shownId !== "home" && cardById(shownId).full && (
+        {shownId !== "home" && (cardById(shownId).full || saved?.tighter) && (
           <button className={`ov-btn${full ? " on" : ""}`} onClick={() => setFull((f) => !f)}>
             Full text
           </button>
@@ -242,7 +251,7 @@ function HomeView({ pick }: { pick: (id: string) => void }) {
   );
 }
 
-function CardView({ card, detail, full }: { card: Card; detail: (id: string) => string; full: boolean }) {
+function CardView({ card, detail, full, saved }: { card: Card; detail: (id: string) => string; full: boolean; saved?: SavedAnswer }) {
   const lines = card.zhSet ? zhSet(card.zhSet).lines : [];
   const notes = (card.details ?? []).map((id) => detail(id)).filter(Boolean);
   return (
@@ -261,18 +270,30 @@ function CardView({ card, detail, full }: { card: Card; detail: (id: string) => 
           ))}
         </div>
       )}
-      {full && card.full ? (
+      {full && (card.full || saved?.tighter) ? (
         <div className="ov-full">
-          {card.full.split("\n").map((p, i) => (
+          {saved?.tighter && (
+            <>
+              <div className="ov-label">Your practised version ({saved.rating}/5)</div>
+              {saved.tighter.split("\n").map((p, i) => (
+                <p key={`s${i}`}>{p}</p>
+              ))}
+              {card.full && <div className="ov-label">Prepared answer</div>}
+            </>
+          )}
+          {card.full?.split("\n").map((p, i) => (
             <p key={i}>{p}</p>
           ))}
         </div>
       ) : (
-        <ul className="ov-cues">
-          {card.cues.map((c, i) => (
-            <li key={i}>{c}</li>
-          ))}
-        </ul>
+        <>
+          <ul className="ov-cues">
+            {card.cues.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+          {saved && saved.cues.length > 0 && <div className="ov-practice">★ From practice: {saved.cues.join(" · ")}</div>}
+        </>
       )}
       {notes.map((n, i) => (
         <div key={i} className="ov-note">

@@ -12,6 +12,7 @@ import type { LlmRequest } from "./gemini.ts";
 import { currentModel, generate } from "./llm.ts";
 import { readDetails, writeDetails } from "./details.ts";
 import { listSessions, readSession, saveSession } from "./sessions.ts";
+import { readAnswers, saveAnswer, type SavedAnswer } from "./answers.ts";
 import { PROFILE, ensureEnvFile, ensureProfile } from "./profile.ts";
 
 const portArg = process.argv.indexOf("--port");
@@ -93,6 +94,12 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     case "POST /api/llm": {
       const body = await readJson<LlmRequest>(req);
       return sendJson(res, 200, await generate(body));
+    }
+    case "GET /api/answers":
+      return sendJson(res, 200, await readAnswers());
+    case "PUT /api/answers": {
+      const body = await readJson<{ id: string; answer: Partial<SavedAnswer> }>(req);
+      return sendJson(res, 200, await saveAnswer(body.id, body.answer ?? {}));
     }
     case "GET /api/details":
       return sendJson(res, 200, await readDetails());

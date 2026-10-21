@@ -6,7 +6,8 @@ plus live cue cards during the interview. It runs on your own computer, in your 
 - **Chinese drill**: your Chinese self-introduction line by line, with a Taiwan voice and a check of
   each syllable and tone.
 - **English practice**: your intro, slides, likely questions and case prompts, timed (length, pace,
-  pauses), with AI feedback and a tighter version you can listen to.
+  pauses), with AI feedback and a tighter version you can listen to. Your best take of each question
+  is saved, and the overlay shows its keywords.
 - **Case questions**: the 6 C's method (Clarify, Contain, Compare, Cause, Correct, Copy across) with
   worked examples.
 - **Mock interview**: a spoken interview with an AI interviewer that asks follow-ups, then a scorecard.
@@ -112,6 +113,8 @@ A good order, the day before:
    a **Google Translate** button to hear it.
 2. **English practice**: two timed runs of your introduction (under 1:45), then the likely
    questions. `Space` record/stop · `Q` hear the question · `C` cues on/off.
+   Each take with AI feedback is saved for the overlay (its keywords, and the tighter version), unless
+   the take you saved before is rated higher. To keep a take anyway, click **Use this one instead**.
 3. **Case questions**: learn the 6 C's, say the universal answer out loud three times, then answer
    two examples yourself.
 4. **Mock interview** (with headphones) twice: fix the top three points from each scorecard.
@@ -130,8 +133,10 @@ Allow the microphone when the browser asks.
 3. In the overlay: type a word (`stress`, `why`, `case`) and press `Enter` to open a card · `1`–`6`
    quick cards (中文 SOS, bridges, your questions, closing, slides, 中文 intro) · `Esc` or `0` back to
    the plan · **Start now** if the interview starts late.
-4. When you share slides, share the slideshow **window**, not your whole screen.
-5. **Close the overlay** with ✕ on it, the "Close the overlay" button, or by closing the tab.
+4. Under a card you practised, **★ From practice** shows the keywords of your saved take. **Full
+   text** shows its tighter version, then the prepared answer.
+5. When you share slides, share the slideshow **window**, not your whole screen.
+6. **Close the overlay** with ✕ on it, the "Close the overlay" button, or by closing the tab.
 
 The cues are keywords, not scripts: reading full sentences shows on camera.
 
@@ -156,8 +161,9 @@ The cues are keywords, not scripts: reading full sentences shows on camera.
 - Your answers, your profile and your details go to **Groq** (or **Gemini** as the backup) for the
   interviewer and feedback. On Gemini's free tier, Google may use what you send to improve its
   models. Each service's own terms apply.
-- Nothing is uploaded anywhere else. `profile/`, `.env` and `sessions/` (your saved mock interviews)
-  stay on your computer and are excluded from git.
+- Nothing is uploaded anywhere else. `profile/` (including `answers.json`, your saved practice
+  answers), `.env` and `sessions/` (your saved mock interviews) stay on your computer and are excluded
+  from git.
 
 ## Updating
 

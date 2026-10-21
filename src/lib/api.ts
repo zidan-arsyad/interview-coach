@@ -45,6 +45,8 @@ export type Transcript = {
   segments?: { start: number; end: number; text: string }[];
 };
 export type DetailItem = { id: string; title: string; hint: string; answer: string };
+/** Your latest practice of one question: what you said, and the AI's tighter version and keywords. */
+export type SavedAnswer = { question: string; said: string; tighter: string; cues: string[]; rating: number; at: number };
 export type LlmMessage = { role: "user" | "model"; text: string };
 export type LlmRequest = { system: string; messages: LlmMessage[]; schema?: unknown; temperature?: number; maxTokens?: number };
 
@@ -56,6 +58,8 @@ export const api = {
   sessions: () => request<{ file: string; savedAt: string; summary?: string; rating?: number }[]>("GET", "/api/sessions"),
   session: (file: string) => request<unknown>("GET", `/api/sessions/${encodeURIComponent(file)}`),
   saveSession: (data: unknown) => request<{ file: string }>("POST", "/api/sessions", data),
+  answers: () => request<Record<string, SavedAnswer>>("GET", "/api/answers"),
+  saveAnswer: (id: string, answer: SavedAnswer) => request<Record<string, SavedAnswer>>("PUT", "/api/answers", { id, answer }),
   selftestGroq: () => request<Transcript & { sample: boolean }>("GET", "/api/selftest/groq"),
 
   async transcribe(wav: Blob, lang: "zh" | "en" | "auto"): Promise<Transcript> {

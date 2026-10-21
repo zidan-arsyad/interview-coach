@@ -186,6 +186,7 @@ export type AnswerFeedback = {
   missing: string[];
   caseStepsHit: string[];
   tighter: string;
+  cues: string[];
 };
 
 export const feedbackSchema = S.obj({
@@ -198,6 +199,7 @@ export const feedbackSchema = S.obj({
   missing: S.arr(S.str(), "Important prepared points they left out, short"),
   caseStepsHit: S.arr(S.str(undefined, caseSteps), "Case steps covered; empty if not a case question"),
   tighter: S.str("A tighter spoken version in their own words and facts"),
+  cues: S.arr(S.str(), "3 to 5 short keywords for the tighter version, in speaking order"),
 });
 
 export function feedbackSystem(details: DetailItem[]): string {
@@ -205,6 +207,7 @@ export function feedbackSystem(details: DetailItem[]): string {
 
 ${coachRules}
 
+For "cues": 3 to 5 keywords (two to four words each), in speaking order, that remind them of the tighter version during the real interview. Name the specific point or example ("double-checked the data"), not the topic ("strength").
 For "tighter": rewrite THEIR answer in their own words and facts, spoken style, within the target length. Never invent facts or numbers: write [your number] where a real detail is missing. For a self-introduction keep it under 90 seconds.
 
 The candidate's own notes
