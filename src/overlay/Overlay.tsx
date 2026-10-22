@@ -175,7 +175,6 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
     <div className={`overlay${embedded ? " overlay-embedded" : ""}`} style={{ ["--ov-scale" as string]: scale }} onMouseUp={() => win.getSelection()?.isCollapsed && input.current?.focus()}>
       {/* The answer comes first, right under the camera; the controls sit below it. */}
       <div className="ov-main">
-        {!onStep && <QuestionList shownId={shownId} pick={pick} answers={answers} />}
         <div className="ov-body" ref={body}>
           {query ? (
             <ul className="ov-matches">
@@ -197,6 +196,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
             <CardView card={cardById(shownId)} detail={detail} showAnswer={showAnswers} saved={saved} />
           )}
         </div>
+        {!onStep && <QuestionList shownId={shownId} pick={pick} answers={answers} />}
       </div>
 
       <div className="ov-search">
@@ -316,7 +316,7 @@ function QuestionList({ shownId, pick, answers }: { shownId: string; pick: (id: 
 function HomeView() {
   return (
     <div className="ov-home">
-      <div className="ov-title">Hear the whole question, then click it on the left</div>
+      <div className="ov-title">Hear the whole question, then click it on the right</div>
       <p className="ov-muted ov-hint">Or type a word below (stress, why, case…) and press Enter.</p>
       <ul className="ov-cues ov-small">
         {cardById("bridges").cues.slice(0, 3).map((c, i) => (

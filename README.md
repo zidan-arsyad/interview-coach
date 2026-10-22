@@ -133,7 +133,7 @@ Allow the microphone when the browser asks.
 3. The overlay shows the card at the top, right under your camera, with the controls below it. The
    steps bar lists the interview's steps (English intro, 中文 intro, Slides, Their questions, Your
    questions, Closing): click one to open it. A green ● marks where the plan says you are. Under
-   **Their questions**, click the question in the list on the left. Or type a word (`stress`,
+   **Their questions**, click the question in the list on the right. Or type a word (`stress`,
    `why`, `case`) and press `Enter` · `1`–`6` quick cards (中文 SOS, bridges, your questions,
    closing, slides, 中文 intro) · `Esc` or `0` follows the plan again · **Start now** if the
    interview starts late.
