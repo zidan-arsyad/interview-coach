@@ -107,6 +107,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
   const [showAnswers, setShowAnswers] = useState(() => load("overlay:answers", true));
   const [scale, setScale] = useState(() => load("overlay:scale", 1));
   const input = useRef<HTMLInputElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   useEffect(() => save("overlay:scale", scale), [scale]);
   useEffect(() => save("overlay:answers", showAnswers), [showAnswers]);
 
@@ -114,6 +115,10 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
   const following = !manual || manual.before !== before;
   const shownId = following ? autoCard : manual.id;
   const saved = savedFor(answers, shownId);
+  // Each card opens at its top, where the answer is.
+  useEffect(() => {
+    if (body.current) body.current.scrollTop = 0;
+  }, [shownId, query]);
 
   // Plan steps (intro, slides…) fill the window; everything else shows the question list beside it.
   const onStep = shownId !== "home" && STEP_CARDS.has(shownId);
@@ -152,7 +157,7 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
     }
   };
 
-  // Header: where we are in the plan.
+  // Status line: where we are in the plan.
   let planText: string;
   let planTone = "ok";
   if (before) planText = `Starts in ${countdown(base - now)}`;
@@ -168,7 +173,82 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
 
   return (
     <div className={`overlay${embedded ? " overlay-embedded" : ""}`} style={{ ["--ov-scale" as string]: scale }} onMouseUp={() => win.getSelection()?.isCollapsed && input.current?.focus()}>
-      <div className="ov-top">
+      {/* The answer comes first, right under the camera; the controls sit below it. */}
+      <div className="ov-main">
+        {!onStep && <QuestionList shownId={shownId} pick={pick} answers={answers} />}
+        <div className="ov-body" ref={body}>
+          {query ? (
+            <ul className="ov-matches">
+              {matches.length ? (
+                matches.map((c, i) => (
+                  <li key={c.id}>
+                    <button className={i === hi ? "on" : ""} onMouseEnter={() => setHi(i)} onClick={() => pick(c.id)}>
+                      {c.title}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="ov-muted">No card matches “{query}”.</li>
+              )}
+            </ul>
+          ) : shownId === "home" ? (
+            <HomeView />
+          ) : (
+            <CardView card={cardById(shownId)} detail={detail} showAnswer={showAnswers} saved={saved} />
+          )}
+        </div>
+      </div>
+
+      <div className="ov-search">
+        <input
+          ref={input}
+          autoFocus={!embedded}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setHi(0);
+          }}
+          onKeyDown={onKeyDown}
+          placeholder="Type to find a card (stress, why, case…) · Enter opens · Esc back"
+          spellCheck={false}
+        />
+      </div>
+
+      <nav className="ov-steps" aria-label="Interview steps">
+        {STEPS.map((s) => (
+          <button
+            key={s.id}
+            className={`ov-step${s.id === shownStep ? " on" : ""}${s.id === nowStep ? " now" : ""}`}
+            onClick={() => pick(s.card)}
+            title={s.id === nowStep ? "Now, by the plan" : undefined}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="ov-quick">
+        {QUICK.map((q) => (
+          <button key={q.key} className={`ov-btn${shownId === q.id ? " on" : ""}`} onClick={() => pick(q.id)}>
+            <b>{q.key}</b> {q.label}
+          </button>
+        ))}
+        <button className={`ov-btn${following ? " on" : ""}`} onClick={followPlan} title="Follow the plan: the card changes with the interview's timing">
+          <b>0</b> Plan
+        </button>
+        <span className="ov-spacer" />
+        <button className={`ov-btn${showAnswers ? " on" : ""}`} onClick={() => setShowAnswers((v: boolean) => !v)} title="Show or hide the answers under the cues">
+          Answers
+        </button>
+      </div>
+
+      <div className="ov-messages">
+        {messages.map((m) => (
+          <span key={m.id}>▸ {m.short}</span>
+        ))}
+      </div>
+
+      <div className="ov-status">
         <span className="ov-clock">
           {zones.them.label} {timeThem(nowDate, true)} · {zones.you.label} {timeYou(nowDate, true)}
         </span>
@@ -199,80 +279,6 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
             ✕
           </button>
         )}
-      </div>
-
-      <div className="ov-messages">
-        {messages.map((m) => (
-          <span key={m.id}>▸ {m.short}</span>
-        ))}
-      </div>
-
-      <nav className="ov-steps" aria-label="Interview steps">
-        {STEPS.map((s) => (
-          <button
-            key={s.id}
-            className={`ov-step${s.id === shownStep ? " on" : ""}${s.id === nowStep ? " now" : ""}`}
-            onClick={() => pick(s.card)}
-            title={s.id === nowStep ? "Now, by the plan" : undefined}
-          >
-            {s.label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="ov-search">
-        <input
-          ref={input}
-          autoFocus={!embedded}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setHi(0);
-          }}
-          onKeyDown={onKeyDown}
-          placeholder="Type to find a card (stress, why, case…) · Enter opens · Esc back"
-          spellCheck={false}
-        />
-      </div>
-
-      <div className="ov-main">
-        {!onStep && <QuestionList shownId={shownId} pick={pick} answers={answers} />}
-        <div className="ov-body">
-          {query ? (
-            <ul className="ov-matches">
-              {matches.length ? (
-                matches.map((c, i) => (
-                  <li key={c.id}>
-                    <button className={i === hi ? "on" : ""} onMouseEnter={() => setHi(i)} onClick={() => pick(c.id)}>
-                      {c.title}
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="ov-muted">No card matches “{query}”.</li>
-              )}
-            </ul>
-          ) : shownId === "home" ? (
-            <HomeView />
-          ) : (
-            <CardView card={cardById(shownId)} detail={detail} showAnswer={showAnswers} saved={saved} />
-          )}
-        </div>
-      </div>
-
-      <div className="ov-bottom">
-        {QUICK.map((q) => (
-          <button key={q.key} className={`ov-btn${shownId === q.id ? " on" : ""}`} onClick={() => pick(q.id)}>
-            <b>{q.key}</b> {q.label}
-          </button>
-        ))}
-        <button className={`ov-btn${following ? " on" : ""}`} onClick={followPlan} title="Follow the plan: the card changes with the interview's timing">
-          <b>0</b> Plan
-        </button>
-        <span className="ov-spacer" />
-        <button className={`ov-btn${showAnswers ? " on" : ""}`} onClick={() => setShowAnswers((v: boolean) => !v)} title="Show or hide the answers under the cues">
-          Answers
-        </button>
       </div>
     </div>
   );
@@ -311,7 +317,7 @@ function HomeView() {
   return (
     <div className="ov-home">
       <div className="ov-title">Hear the whole question, then click it on the left</div>
-      <p className="ov-muted ov-hint">Or type a word above (stress, why, case…) and press Enter.</p>
+      <p className="ov-muted ov-hint">Or type a word below (stress, why, case…) and press Enter.</p>
       <ul className="ov-cues ov-small">
         {cardById("bridges").cues.slice(0, 3).map((c, i) => (
           <li key={i}>{c}</li>

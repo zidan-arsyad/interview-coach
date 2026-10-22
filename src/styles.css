@@ -1113,13 +1113,14 @@ html.overlay-doc body > div {
 .overlay-embedded {
   min-height: 0;
 }
-.ov-top {
+/* Top to bottom: the card (under the camera), then search, steps, quick cards, messages, status. */
+.ov-status {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
   background: #161b22;
-  border-bottom: 1px solid #30363d;
+  border-top: 1px solid #30363d;
   font-size: 0.85em;
   flex-wrap: wrap;
 }
@@ -1145,12 +1146,12 @@ html.overlay-doc body > div {
   padding: 4px 10px;
   font-size: 0.8em;
   color: #79c0ff;
-  border-bottom: 1px solid #21262d;
+  border-top: 1px solid #21262d;
 }
 .ov-search input {
   width: 100%;
   border: none;
-  border-bottom: 1px solid #30363d;
+  border-top: 1px solid #30363d;
   background: #0d1117;
   color: #e6edf3;
   font: inherit;
@@ -1167,7 +1168,7 @@ html.overlay-doc body > div {
   overflow-x: auto;
   padding: 4px 6px;
   background: #11161d;
-  border-bottom: 1px solid #30363d;
+  border-top: 1px solid #30363d;
 }
 .ov-step {
   font: inherit;
@@ -1363,7 +1364,7 @@ html.overlay-doc body > div {
 .ov-chip:hover {
   border-color: #58a6ff;
 }
-.ov-bottom {
+.ov-quick {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;

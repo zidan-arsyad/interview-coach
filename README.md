@@ -130,12 +130,13 @@ Allow the microphone when the browser asks.
    your slot.
 2. Click **Open the overlay** and drag it to just under your webcam, so looking at it still looks
    like eye contact. Your meeting can run in any browser: the overlay floats above every window.
-3. In the overlay, the bar at the top lists the interview's steps (English intro, 中文 intro, Slides,
-   Their questions, Your questions, Closing): click one to open it. A green ● marks where the plan
-   says you are. Under **Their questions**, click the question in the list on the left. Or type a
-   word (`stress`, `why`, `case`) and press `Enter` · `1`–`6` quick cards (中文 SOS, bridges, your
-   questions, closing, slides, 中文 intro) · `Esc` or `0` follows the plan again · **Start now** if
-   the interview starts late.
+3. The overlay shows the card at the top, right under your camera, with the controls below it. The
+   steps bar lists the interview's steps (English intro, 中文 intro, Slides, Their questions, Your
+   questions, Closing): click one to open it. A green ● marks where the plan says you are. Under
+   **Their questions**, click the question in the list on the left. Or type a word (`stress`,
+   `why`, `case`) and press `Enter` · `1`–`6` quick cards (中文 SOS, bridges, your questions,
+   closing, slides, 中文 intro) · `Esc` or `0` follows the plan again · **Start now** if the
+   interview starts late.
 4. A card shows its answer first, then the keywords: your practised version if you saved one (its
    keywords marked **★ From practice**), and the prepared answer. **Answers** hides them.
 5. When you share slides, share the slideshow **window**, not your whole screen.
