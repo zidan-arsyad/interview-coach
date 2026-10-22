@@ -1,5 +1,6 @@
-// The interview-day cue card: clock, plan, pinned messages, and your cards one keystroke away.
-// Rendered in an always-on-top picture-in-picture window, or inline as a preview.
+// The interview-day cue card: clock, the interview's steps, your questions with their answers, and
+// quick cards one keystroke away. Rendered in an always-on-top picture-in-picture window, or inline
+// as a preview.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { cards, card as cardById, likelyCards, messages, segments, type Card } from "../content/interview.ts";
 import { zhSet } from "../content/zh.ts";
@@ -18,6 +19,21 @@ const QUICK: { key: string; id: string; label: string }[] = [
   { key: "5", id: "slides", label: "Slides" },
   { key: "6", id: "intro-zh", label: "中文 intro" },
 ];
+
+// The steps bar: the plan's parts in order (one per card), then the closing.
+const STEPS: { id: string; label: string; card: string }[] = segments.filter((s, i) => segments[i + 1]?.card !== s.card).map((s) => ({ id: s.id, label: s.label, card: s.card }));
+if (!STEPS.some((s) => s.card === "closing")) STEPS.push({ id: "closing", label: "Closing", card: "closing" });
+const STEP_CARDS = new Set(STEPS.map((s) => s.card));
+const QA_STEP = STEPS.find((s) => s.card === "home");
+
+// The question list beside the answers: the likely questions first, then the rest by group.
+const QUESTION_GROUPS: { label: string; ids: string[] }[] = [{ label: "Likely", ids: likelyCards.filter((id) => !STEP_CARDS.has(id)) }];
+for (const c of cards) {
+  if (!c.question || c.group === "Intro" || STEP_CARDS.has(c.id) || QUESTION_GROUPS[0].ids.includes(c.id)) continue;
+  const group = QUESTION_GROUPS.find((g) => g.label === c.group);
+  if (group) group.ids.push(c.id);
+  else QUESTION_GROUPS.push({ label: c.group, ids: [c.id] });
+}
 
 // Shared between the inline preview and the pop-out (same JavaScript context).
 const baseListeners = new Set<() => void>();
@@ -81,28 +97,38 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
   const seg = segments.find((s) => elapsedMin >= s.from && elapsedMin < s.to);
   const before = elapsedMin < 0;
   const after = elapsedMin >= slot.minutes;
-  const autoCard = before ? "intro-en" : after ? "closing" : (seg?.card ?? "home");
-  const segKey = before ? "before" : after ? "after" : (seg?.id ?? "none");
+  const autoCard = before ? (segments[0]?.card ?? "home") : after ? "closing" : (seg?.card ?? "home");
 
-  // A card you pick stays until you pick another, press Esc/0, or the plan moves to the next part.
-  const [manual, setManual] = useState<{ id: string; seg: string } | null>(null);
+  // A card you pick stays until you pick another, or press Esc/0 to follow the plan again. Picks made
+  // before the interview are dropped when it starts, so it opens on the plan's first step.
+  const [manual, setManual] = useState<{ id: string; before: boolean } | null>(null);
   const [query, setQuery] = useState("");
   const [hi, setHi] = useState(0);
-  const [full, setFull] = useState(false);
+  const [showAnswers, setShowAnswers] = useState(() => load("overlay:answers", true));
   const [scale, setScale] = useState(() => load("overlay:scale", 1));
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => save("overlay:scale", scale), [scale]);
+  useEffect(() => save("overlay:answers", showAnswers), [showAnswers]);
 
   const matches = useMemo(() => search(query), [query]);
-  const shownId = manual && manual.seg === segKey ? manual.id : autoCard;
+  const following = !manual || manual.before !== before;
+  const shownId = following ? autoCard : manual.id;
   const saved = savedFor(answers, shownId);
 
+  // Plan steps (intro, slides…) fill the window; everything else shows the question list beside it.
+  const onStep = shownId !== "home" && STEP_CARDS.has(shownId);
+  const shownStep = onStep ? STEPS.find((s) => s.card === shownId)?.id : QA_STEP?.id;
+  const nowStep = before ? undefined : after ? "closing" : STEPS.find((s) => s.card === seg?.card)?.id;
+
   const pick = (id: string) => {
-    setManual({ id, seg: segKey });
+    setManual({ id, before });
     setQuery("");
     setHi(0);
-    setFull(false);
     input.current?.focus();
+  };
+  const followPlan = () => {
+    setManual(null);
+    setQuery("");
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -118,10 +144,10 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
     } else if (e.key === "Escape") {
       e.preventDefault();
       if (query) setQuery("");
-      else setManual(null);
+      else followPlan();
     } else if (!query && /^[0-6]$/.test(e.key)) {
       e.preventDefault();
-      if (e.key === "0") setManual(null);
+      if (e.key === "0") followPlan();
       else pick(QUICK.find((q) => q.key === e.key)!.id);
     }
   };
@@ -147,7 +173,20 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
           {zones.them.label} {timeThem(nowDate, true)} · {zones.you.label} {timeYou(nowDate, true)}
         </span>
         <span className={`ov-plan ov-plan-${planTone}`}>{planText}</span>
-        <button className="ov-btn" onClick={() => writeBase(Date.now())} title="The interview started just now: line the plan up with it">
+        <button className="ov-btn" onClick={() => setScale((s: number) => Math.max(0.7, +(s - 0.1).toFixed(1)))} aria-label="Smaller text">
+          A−
+        </button>
+        <button className="ov-btn" onClick={() => setScale((s: number) => Math.min(1.8, +(s + 0.1).toFixed(1)))} aria-label="Bigger text">
+          A+
+        </button>
+        <button
+          className="ov-btn"
+          onClick={() => {
+            writeBase(Date.now());
+            followPlan();
+          }}
+          title="The interview started just now: line the plan up with it"
+        >
           Start now
         </button>
         {base !== slotStart(slot).getTime() && (
@@ -168,6 +207,19 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
         ))}
       </div>
 
+      <nav className="ov-steps" aria-label="Interview steps">
+        {STEPS.map((s) => (
+          <button
+            key={s.id}
+            className={`ov-step${s.id === shownStep ? " on" : ""}${s.id === nowStep ? " now" : ""}`}
+            onClick={() => pick(s.card)}
+            title={s.id === nowStep ? "Now, by the plan" : undefined}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+
       <div className="ov-search">
         <input
           ref={input}
@@ -183,26 +235,29 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
         />
       </div>
 
-      <div className="ov-body">
-        {query ? (
-          <ul className="ov-matches">
-            {matches.length ? (
-              matches.map((c, i) => (
-                <li key={c.id}>
-                  <button className={i === hi ? "on" : ""} onMouseEnter={() => setHi(i)} onClick={() => pick(c.id)}>
-                    {c.title}
-                  </button>
-                </li>
-              ))
-            ) : (
-              <li className="ov-muted">No card matches “{query}”.</li>
-            )}
-          </ul>
-        ) : shownId === "home" ? (
-          <HomeView pick={pick} />
-        ) : (
-          <CardView card={cardById(shownId)} detail={detail} full={full} saved={saved} />
-        )}
+      <div className="ov-main">
+        {!onStep && <QuestionList shownId={shownId} pick={pick} answers={answers} />}
+        <div className="ov-body">
+          {query ? (
+            <ul className="ov-matches">
+              {matches.length ? (
+                matches.map((c, i) => (
+                  <li key={c.id}>
+                    <button className={i === hi ? "on" : ""} onMouseEnter={() => setHi(i)} onClick={() => pick(c.id)}>
+                      {c.title}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="ov-muted">No card matches “{query}”.</li>
+              )}
+            </ul>
+          ) : shownId === "home" ? (
+            <HomeView />
+          ) : (
+            <CardView card={cardById(shownId)} detail={detail} showAnswer={showAnswers} saved={saved} />
+          )}
+        </div>
       </div>
 
       <div className="ov-bottom">
@@ -211,37 +266,52 @@ export function Overlay({ win, embedded = false }: { win: Window; embedded?: boo
             <b>{q.key}</b> {q.label}
           </button>
         ))}
-        <button className="ov-btn" onClick={() => setManual(null)}>
-          <b>0</b> Auto
+        <button className={`ov-btn${following ? " on" : ""}`} onClick={followPlan} title="Follow the plan: the card changes with the interview's timing">
+          <b>0</b> Plan
         </button>
         <span className="ov-spacer" />
-        {shownId !== "home" && (cardById(shownId).full || saved?.tighter) && (
-          <button className={`ov-btn${full ? " on" : ""}`} onClick={() => setFull((f) => !f)}>
-            Full text
-          </button>
-        )}
-        <button className="ov-btn" onClick={() => setScale((s: number) => Math.max(0.7, +(s - 0.1).toFixed(1)))} aria-label="Smaller text">
-          A−
-        </button>
-        <button className="ov-btn" onClick={() => setScale((s: number) => Math.min(1.8, +(s + 0.1).toFixed(1)))} aria-label="Bigger text">
-          A+
+        <button className={`ov-btn${showAnswers ? " on" : ""}`} onClick={() => setShowAnswers((v: boolean) => !v)} title="Show or hide the answers under the cues">
+          Answers
         </button>
       </div>
     </div>
   );
 }
 
-function HomeView({ pick }: { pick: (id: string) => void }) {
+function QuestionList({ shownId, pick, answers }: { shownId: string; pick: (id: string) => void; answers: Record<string, SavedAnswer> }) {
+  const list = useRef<HTMLElement>(null);
+  // Keep the open question in view, e.g. after opening it by search. (Braces: newer browsers return a
+  // promise from scrollIntoView, and an effect must return nothing.)
+  useEffect(() => {
+    list.current?.querySelector(".ov-q.on")?.scrollIntoView({ block: "nearest" });
+  }, [shownId]);
+  return (
+    <nav className="ov-qlist" ref={list} aria-label="Questions">
+      {QUESTION_GROUPS.map((g) => (
+        <div key={g.label}>
+          <div className="ov-qgroup">{g.label}</div>
+          {g.ids.map((id) => (
+            <button key={id} className={`ov-q${id === shownId ? " on" : ""}`} onClick={() => pick(id)}>
+              {cardById(id).title}
+              {savedFor(answers, id) && (
+                <span className="ov-q-star" title="You practised this">
+                  {" "}
+                  ★
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function HomeView() {
   return (
     <div className="ov-home">
-      <div className="ov-title">Their questions: hear the whole question, then type a word</div>
-      <div className="ov-chips">
-        {likelyCards.map((id) => (
-          <button key={id} className="ov-chip" onClick={() => pick(id)}>
-            {cardById(id).title}
-          </button>
-        ))}
-      </div>
+      <div className="ov-title">Hear the whole question, then click it on the left</div>
+      <p className="ov-muted ov-hint">Or type a word above (stress, why, case…) and press Enter.</p>
       <ul className="ov-cues ov-small">
         {cardById("bridges").cues.slice(0, 3).map((c, i) => (
           <li key={i}>{c}</li>
@@ -251,9 +321,11 @@ function HomeView({ pick }: { pick: (id: string) => void }) {
   );
 }
 
-function CardView({ card, detail, full, saved }: { card: Card; detail: (id: string) => string; full: boolean; saved?: SavedAnswer }) {
+function CardView({ card, detail, showAnswer, saved }: { card: Card; detail: (id: string) => string; showAnswer: boolean; saved?: SavedAnswer }) {
   const lines = card.zhSet ? zhSet(card.zhSet).lines : [];
   const notes = (card.details ?? []).map((id) => detail(id)).filter(Boolean);
+  // The answer comes first when shown, so it's on screen without scrolling; the keywords follow.
+  const answer = showAnswer && Boolean(saved?.tighter || card.full);
   return (
     <div className="ov-card">
       <div className="ov-title">{card.title}</div>
@@ -270,7 +342,8 @@ function CardView({ card, detail, full, saved }: { card: Card; detail: (id: stri
           ))}
         </div>
       )}
-      {full && (card.full || saved?.tighter) ? (
+      {saved && saved.cues.length > 0 && <div className="ov-practice">★ From practice: {saved.cues.join(" · ")}</div>}
+      {answer && (
         <div className="ov-full">
           {saved?.tighter && (
             <>
@@ -278,23 +351,24 @@ function CardView({ card, detail, full, saved }: { card: Card; detail: (id: stri
               {saved.tighter.split("\n").map((p, i) => (
                 <p key={`s${i}`}>{p}</p>
               ))}
-              {card.full && <div className="ov-label">Prepared answer</div>}
             </>
           )}
-          {card.full?.split("\n").map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+          {card.full && (
+            <>
+              <div className="ov-label">{saved?.tighter ? "Prepared answer" : card.question ? "Recommended answer" : "Full text"}</div>
+              {card.full.split("\n").map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </>
+          )}
         </div>
-      ) : (
-        <>
-          <ul className="ov-cues">
-            {card.cues.map((c, i) => (
-              <li key={i}>{c}</li>
-            ))}
-          </ul>
-          {saved && saved.cues.length > 0 && <div className="ov-practice">★ From practice: {saved.cues.join(" · ")}</div>}
-        </>
       )}
+      {answer && <div className="ov-label">Keywords</div>}
+      <ul className="ov-cues">
+        {card.cues.map((c, i) => (
+          <li key={i}>{c}</li>
+        ))}
+      </ul>
       {notes.map((n, i) => (
         <div key={i} className="ov-note">
           {n}

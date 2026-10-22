@@ -40,6 +40,8 @@ function useHashPath(): string {
 
 export function App() {
   const path = useHashPath();
+  // The pop-up overlay fills its window like the picture-in-picture one.
+  document.documentElement.classList.toggle("overlay-doc", path === "/overlay");
   if (path === "/overlay")
     return (
       <AppProvider>

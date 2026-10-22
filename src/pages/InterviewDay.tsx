@@ -64,13 +64,13 @@ export function InterviewDay() {
         <div>
           <h2>Cue overlay</h2>
           <p>
-            A small window that stays on top of {interview.platform} and your slides. It shows the clock, where you should be in your plan, your three messages, and the card
-            for the current part. Type a word (“stress”, “why”, “case”) and press Enter to jump to a card; <b>1</b>–<b>6</b> open the quick cards; <b>Esc</b> or <b>0</b> goes
-            back to the plan.
+            A small window that stays on top of {interview.platform} and your slides. It shows the clock, your three messages, the interview&apos;s steps (click one to
+            jump to it), and the card for the current part. During their questions, click the question in the list: its cues and answer appear beside it. Or type a word
+            (“stress”, “why”, “case”) and press Enter; <b>1</b>–<b>6</b> open the quick cards; <b>Esc</b> or <b>0</b> follows the plan again.
           </p>
           <p className="small muted">
-            Keyword cues, not scripts: reciting full sentences shows on camera and sounds memorized. If the interview starts late, press “Start now” at
-            the real start.
+            Glance at the keywords, and read the answer only if you go blank: reciting full sentences shows on camera. <b>Answers</b> hides them. If the interview
+            starts late, press “Start now” at the real start.
           </p>
           <div className="row-gap">
             <button className="btn btn-primary btn-lg" onClick={() => void open()}>

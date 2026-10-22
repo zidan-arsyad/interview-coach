@@ -39,7 +39,7 @@ export async function openOverlay(): Promise<"pip" | "popup" | "blocked"> {
       return "pip";
     }
     try {
-      pip = await dpip.requestWindow({ width: 540, height: 460 });
+      pip = await dpip.requestWindow({ width: 600, height: 520 });
     } catch {
       pip = null; // e.g. an embedded browser without picture-in-picture: use a popup instead
     }
@@ -65,7 +65,7 @@ export async function openOverlay(): Promise<"pip" | "popup" | "blocked"> {
     watchClose(pip);
     return "pip";
   }
-  popup = window.open("/#/overlay", "interview-cues", "popup,width=540,height=460");
+  popup = window.open("/#/overlay", "interview-cues", "popup,width=600,height=520");
   if (popup) watchClose(popup);
   return popup ? "popup" : "blocked";
 }
